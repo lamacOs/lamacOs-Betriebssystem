@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>lamacOs</title>
+<style>
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+body{
+  margin:0;
+  background:linear-gradient(120deg,#1c1c1e,#2c2c2e);
+  height:100vh;
+  overflow:hidden;
+  color:white;
+}
+#topbar{
+  height:30px;
+  background:rgba(0,0,0,0.4);
+  backdrop-filter:blur(10px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 10px;
+  font-size:13px;
+}
+#desktop{
+  height:calc(100vh - 30px);
+  position:relative;
+}
+.icon{
+  width:70px;
+  text-align:center;
+  margin:15px;
+  cursor:pointer;
+}
+.icon div{
+  font-size:30px;
+}
+.icon span{
+  font-size:12px;
+}
+#icons{
+  display:flex;
+  flex-wrap:wrap;
+}
+.window{
+  position:absolute;
+  width:320px;
+  height:220px;
+  background:rgba(40,40,45,0.85);
+  backdrop-filter:blur(20px);
+  border-radius:12px;
+  box-shadow:0 20px 40px rgba(0,0,0,0.4);
+  overflow:hidden;
+}
+.titlebar{
+  height:30px;
+  background:rgba(0,0,0,0.5);
+  display:flex;
+  align-items:center;
+  padding:0 10px;
+  cursor:move;
+}
+.btn{
+  width:12px;height:12px;border-radius:50%;margin-right:6px;
+}
+.red{background:#ff5f57}
+.yellow{background:#febc2e}
+.green{background:#28c840}
+.content{
+  padding:10px;
+  font-size:13px;
+}
+textarea,input{
+  width:100%;
+  background:#111;
+  color:white;
+  border:none;
+  padding:6px;
+}
+button{
+  background:#444;
+  color:white;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+  cursor:pointer;
+}
+#terminalOutput{
+  height:110px;
+  overflow:auto;
+  background:#000;
+  padding:5px;
+  font-family:monospace;
+  font-size:12px;
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div> lamacOs</div>
+  <div id="clock"></div>
+</div>
+
+<div id="desktop">
+  <div id="icons">
+    <div class="icon" onclick="openApp('terminal')"><div>💻</div><span>Terminal</span></div>
+    <div class="icon" onclick="openApp('notes')"><div>📝</div><span>Notizen</span></div>
+    <div class="icon" onclick="openApp('settings')"><div>⚙️</div><span>Einstellungen</span></div>
+  </div>
+</div>
+
+<script>
+let z=1;
+
+function clock(){
+  const d=new Date();
+  document.getElementById("clock").innerText=
+    d.getHours().toString().padStart(2,"0")+":"+
+    d.getMinutes().toString().padStart(2,"0");
+}
+setInterval(clock,1000);clock();
+
+function makeWindow(title,inner){
+  const w=document.createElement("div");
+  w.className="window";
+  w.style.left="100px";
+  w.style.top="80px";
+  w.style.zIndex=++z;
+
+  const bar=document.createElement("div");
+  bar.className="titlebar";
+  bar.innerHTML=`<div class="btn red"></div>
+                 <div class="btn yellow"></div>
+                 <div class="btn green"></div>
+                 <span style="margin-left:8px">${title}</span>`;
+  bar.querySelector(".red").onclick=()=>w.remove();
+
+  let ox,oy;
+  bar.onmousedown=e=>{
+    ox=e.offsetX;oy=e.offsetY;
+    document.onmousemove=m=>{
+      w.style.left=m.pageX-ox+"px";
+      w.style.top=m.pageY-oy+"px";
+    };
+    document.onmouseup=()=>document.onmousemove=null;
+  };
+
+  const c=document.createElement("div");
+  c.className="content";
+  c.innerHTML=inner;
+
+  w.append(bar,c);
+  w.onmousedown=()=>w.style.zIndex=++z;
+  document.getElementById("desktop").append(w);
+}
+
+function openApp(app){
+  if(app==="terminal"){
+    makeWindow("Terminal",`
+      <div id="terminalOutput"></div>
+      <input id="cmd" placeholder="help" onkeydown="if(event.key==='Enter')runCmd(this)">
+    `);
+  }
+  if(app==="notes"){
+    makeWindow("Notizen",`
+      <textarea id="noteArea" rows="7">${localStorage.note||""}</textarea>
+      <button onclick="saveNote()">Speichern</button>
+    `);
+  }
+  if(app==="settings"){
+    makeWindow("Einstellungen",`
+      <button onclick="toggleBG()">Hintergrund wechseln</button>
+      <p>lamacOs Version 1.0</p>
+    `);
+  }
+}
+
+function runCmd(el){
+  const out=document.getElementById("terminalOutput");
+  const cmd=el.value;
+  out.innerHTML+=`<div>> ${cmd}</div>`;
+  if(cmd==="help") out.innerHTML+="help, about, date, whoami, clear<br>";
+  else if(cmd==="about") out.innerHTML+="lamacOs – Fake OS 😎<br>";
+  else if(cmd==="date") out.innerHTML+=new Date()+"<br>";
+  else if(cmd==="whoami") out.innerHTML+="lamacOs user<br>";
+  else if(cmd==="clear") out.innerHTML="";
+  else out.innerHTML+="Befehl nicht gefunden<br>";
+  el.value="";
+  out.scrollTop=9999;
+}
+
+function saveNote(){
+  localStorage.note=document.getElementById("noteArea").value;
+  alert("Gespeichert 👍");
+}
+
+let alt=false;
+function toggleBG(){
+  alt=!alt;
+  document.body.style.background=
+    alt?"linear-gradient(120deg,#003,#111)":
+    "linear-gradient(120deg,#1c1c1e,#2c2c2e)";
+}
+</script>
+
+</body>
+</html>
