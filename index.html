@@ -1,1 +1,227 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>lamacOS Ultimate</title>
 
+<style>
+:root{
+  --accent:#38bdf8;
+  --glass:rgba(255,255,255,0.15);
+}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{margin:0;height:100vh;background:#020617;color:white;overflow:hidden}
+
+/* BOOT */
+#boot{position:fixed;inset:0;background:black;display:flex;align-items:center;justify-content:center;font-size:22px;z-index:9999}
+
+/* LOGIN */
+#login{position:fixed;inset:0;background:radial-gradient(circle,#020617,#000);display:flex;align-items:center;justify-content:center}
+#loginBox{background:var(--glass);backdrop-filter:blur(20px);padding:30px;border-radius:20px;width:260px;text-align:center}
+#loginBox input,#loginBox button{width:100%;margin-top:10px;padding:8px;border-radius:10px;border:none}
+#loginBox button{background:var(--accent);font-weight:bold}
+
+/* DESKTOP */
+#desktop{display:none;width:100%;height:100%;background:radial-gradient(circle at top,#1e293b,#020617)}
+#topbar{height:28px;background:rgba(0,0,0,0.4);backdrop-filter:blur(10px);display:flex;justify-content:space-between;align-items:center;padding:0 10px;font-size:13px}
+#icons{display:flex;flex-wrap:wrap;padding:10px}
+
+/* ICONS */
+.icon{text-align:center;width:90px;margin:10px;cursor:pointer}
+.icon img{width:48px}
+
+/* WINDOWS */
+.window{position:absolute;width:520px;height:360px;background:var(--glass);backdrop-filter:blur(20px);border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.7)}
+.titlebar{height:30px;background:rgba(0,0,0,0.4);display:flex;align-items:center;padding:0 10px;cursor:move}
+.buttons span{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:6px}
+.red{background:#ef4444}.yellow{background:#facc15}.green{background:#22c55e}
+.content{padding:10px;height:calc(100% - 30px);overflow:auto}
+
+/* FILES */
+.file{padding:6px;border-radius:8px;cursor:pointer}
+.file:hover{background:rgba(255,255,255,0.1)}
+</style>
+</head>
+
+<body>
+
+<div id="boot">lamacOS wird gestartet…</div>
+
+<div id="login">
+  <div id="loginBox">
+    <h2>lamacOS</h2>
+    <input id="user" placeholder="Benutzer">
+    <input id="pass" placeholder="Passwort" type="password">
+    <button onclick="login()">Anmelden</button>
+  </div>
+</div>
+
+<div id="desktop">
+  <div id="topbar">
+    <div> lamacOS</div>
+    <div id="clock"></div>
+  </div>
+
+  <div id="icons"></div>
+</div>
+
+<script>
+/* BOOT */
+setTimeout(()=>boot.style.display="none",2000);
+
+/* CLOCK */
+setInterval(()=>clock.innerText=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),1000);
+
+/* USERS */
+let users = JSON.parse(localStorage.users||"{}");
+let currentUser = null;
+
+/* LOGIN */
+function login(){
+  const u=user.value;
+  if(!users[u]){
+    users[u]={fs:{
+      Desktop:{},
+      Documents:{},
+      Apps:{}
+    },apps:["Explorer","Browser","AppStore","Notizen","Rechner","Game"]};
+    localStorage.users=JSON.stringify(users);
+  }
+  currentUser=u;
+  loginBox.parentElement.style.display="none";
+  desktop.style.display="block";
+  renderIcons();
+}
+
+/* WINDOW SYSTEM */
+let z=10;
+function win(title,html){
+  const w=document.createElement("div");
+  w.className="window";
+  w.style.top="90px";
+  w.style.left="90px";
+  w.style.zIndex=++z;
+  w.innerHTML=`
+  <div class="titlebar">
+    <div class="buttons">
+      <span class="red" onclick="this.closest('.window').remove()"></span>
+      <span class="yellow"></span><span class="green"></span>
+    </div>${title}
+  </div>
+  <div class="content">${html}</div>`;
+  document.body.appendChild(w);
+  drag(w);
+}
+
+/* DRAG */
+function drag(w){
+  const b=w.querySelector(".titlebar");
+  let x=0,y=0,dx,dy;
+  b.onmousedown=e=>{
+    dx=e.clientX;dy=e.clientY;
+    document.onmousemove=ev=>{
+      x+=ev.clientX-dx;y+=ev.clientY-dy;
+      dx=ev.clientX;dy=ev.clientY;
+      w.style.transform=`translate(${x}px,${y}px)`;
+    };
+    document.onmouseup=()=>document.onmousemove=null;
+  };
+}
+
+/* ICONS */
+function renderIcons(){
+  icons.innerHTML="";
+  users[currentUser].apps.forEach(app=>{
+    icons.innerHTML+=`
+      <div class="icon" onclick="openApp('${app}')">
+        <img src="https://cdn-icons-png.flaticon.com/512/888/888879.png">
+        <div>${app}</div>
+      </div>`;
+  });
+}
+
+/* APPS */
+function openApp(a){
+  if(a==="Explorer")explorer();
+  if(a==="Browser")browser();
+  if(a==="AppStore")store();
+  if(a==="Notizen")notes();
+  if(a==="Rechner")calc();
+  if(a==="Game")game();
+}
+
+/* EXPLORER */
+function explorer(){
+  const fs=users[currentUser].fs;
+  let html="";
+  for(let f in fs){
+    html+=`<div class="file" onclick="openFolder('${f}')">📁 ${f}</div>`;
+  }
+  win("Explorer",html+`
+    <hr>
+    <button onclick="newFile()">Neue Datei</button>
+  `);
+}
+function openFolder(f){
+  let html="";
+  let folder=users[currentUser].fs[f];
+  for(let k in folder){
+    html+=`<div class="file" onclick="alert('${folder[k]}')">📄 ${k}</div>`;
+  }
+  win(f,html);
+}
+function newFile(){
+  const name=prompt("Dateiname");
+  users[currentUser].fs.Documents[name]="Neue Datei";
+  localStorage.users=JSON.stringify(users);
+}
+
+/* BROWSER */
+function browser(){
+  win("Browser",`
+    <input id="url" placeholder="https://lamac.search" style="width:100%">
+    <iframe style="width:100%;height:85%" srcdoc="<h1>lamacSearch</h1><p>Fake Internet 😎</p>"></iframe>
+  `);
+}
+
+/* NOTIZEN */
+function notes(){
+  win("Notizen",`
+    <textarea style="width:100%;height:100%" oninput="users[currentUser].note=this.value;localStorage.users=JSON.stringify(users)">
+    ${users[currentUser].note||""}</textarea>
+  `);
+}
+
+/* CALC */
+function calc(){
+  win("Rechner",`
+    <input id="c" style="width:100%" onkeydown="if(event.key==='Enter')r.innerText=eval(this.value)">
+    <div id="r"></div>
+  `);
+}
+
+/* GAME */
+function game(){
+  win("Game",`
+    <p>Klick-Spiel 🎮</p>
+    <button onclick="this.innerText='Score '+(++this.s)">KLICK</button>
+  `);
+}
+
+/* APP STORE */
+function store(){
+  win("App Store",`
+    <p>🎵 Music Player <button onclick="install('Music')">Installieren</button></p>
+  `);
+}
+function install(a){
+  if(!users[currentUser].apps.includes(a)){
+    users[currentUser].apps.push(a);
+    localStorage.users=JSON.stringify(users);
+    renderIcons();
+  }
+}
+</script>
+
+</body>
+</html>
