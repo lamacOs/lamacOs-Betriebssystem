@@ -1,1 +1,187 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>lamacOS ULTRA</title>
+<style>
+:root{
+  --accent:#38bdf8;
+  --glass:rgba(255,255,255,0.14);
+}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{margin:0;height:100vh;background:#020617;color:white;overflow:hidden}
 
+/* BOOT */
+#boot{position:fixed;inset:0;background:black;display:flex;align-items:center;justify-content:center;z-index:9999;font-size:20px}
+
+/* LOGIN */
+#login{position:fixed;inset:0;background:radial-gradient(circle,#020617,#000);display:flex;align-items:center;justify-content:center}
+#loginBox{background:var(--glass);backdrop-filter:blur(20px);padding:30px;border-radius:20px;width:260px;text-align:center}
+#loginBox input,#loginBox button{width:100%;margin-top:10px;padding:8px;border-radius:10px;border:none}
+#loginBox button{background:var(--accent);font-weight:bold}
+
+/* DESKTOP */
+#desktop{display:none;width:100%;height:100%;background:radial-gradient(circle at top,#1e293b,#020617)}
+#topbar{height:28px;background:rgba(0,0,0,0.4);backdrop-filter:blur(10px);display:flex;justify-content:space-between;align-items:center;padding:0 10px;font-size:13px}
+#icons{display:flex;flex-wrap:wrap;padding:10px}
+.icon{text-align:center;width:80px;margin:10px;cursor:pointer}
+.icon img{width:48px}
+
+/* WINDOWS */
+.window{position:absolute;width:460px;height:320px;background:var(--glass);backdrop-filter:blur(20px);border-radius:14px;box-shadow:0 20px 40px rgba(0,0,0,0.6)}
+.titlebar{height:30px;background:rgba(0,0,0,0.4);display:flex;align-items:center;padding:0 10px;cursor:move}
+.buttons span{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:6px}
+.red{background:#ef4444}.yellow{background:#facc15}.green{background:#22c55e}
+.content{padding:10px;height:calc(100% - 30px);overflow:auto}
+
+/* FILES */
+.file{padding:6px;border-radius:8px;cursor:pointer}
+.file:hover{background:rgba(255,255,255,0.1)}
+
+/* TERMINAL */
+#terminal{background:black;color:#22c55e;font-family:monospace;height:100%}
+#termOut{height:85%;overflow:auto}
+#termIn{width:100%;background:black;color:#22c55e;border:none;outline:none}
+</style>
+</head>
+<body>
+
+<div id="boot">lamacOS startet…</div>
+
+<div id="login">
+  <div id="loginBox">
+    <h2>lamacOS</h2>
+    <input id="user" placeholder="Benutzer">
+    <input id="pass" placeholder="Passwort" type="password">
+    <button onclick="startOS()">Anmelden</button>
+  </div>
+</div>
+
+<div id="desktop">
+  <div id="topbar">
+    <div> lamacOS</div>
+    <div id="clock"></div>
+  </div>
+
+  <div id="icons">
+    <div class="icon" onclick="openExplorer()"><img src="https://cdn-icons-png.flaticon.com/512/716/716784.png"><div>Explorer</div></div>
+    <div class="icon" onclick="openTerminal()"><img src="https://cdn-icons-png.flaticon.com/512/4248/4248443.png"><div>Terminal</div></div>
+    <div class="icon" onclick="openNotes()"><img src="https://cdn-icons-png.flaticon.com/512/3022/3022251.png"><div>Notizen</div></div>
+    <div class="icon" onclick="openCalc()"><img src="https://cdn-icons-png.flaticon.com/512/2721/2721270.png"><div>Rechner</div></div>
+    <div class="icon" onclick="openStore()"><img src="https://cdn-icons-png.flaticon.com/512/891/891419.png"><div>App Store</div></div>
+  </div>
+</div>
+
+<script>
+/* BOOT */
+setTimeout(()=>boot.style.display="none",2000);
+
+/* CLOCK */
+setInterval(()=>clock.innerText=new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),1000);
+
+/* FILESYSTEM */
+let fs = JSON.parse(localStorage.getItem("fs")) || {
+  Desktop:{},
+  Documents:{ "readme.txt":"Willkommen bei lamacOS 😎" },
+  Apps:{}
+};
+function saveFS(){localStorage.setItem("fs",JSON.stringify(fs));}
+
+/* LOGIN */
+function startOS(){
+  login.style.display="none";
+  desktop.style.display="block";
+}
+
+/* WINDOWS */
+let z=10;
+function win(title,html){
+  const w=document.createElement("div");
+  w.className="window";
+  w.style.top="90px";w.style.left="90px";w.style.zIndex=++z;
+  w.innerHTML=`
+  <div class="titlebar">
+    <div class="buttons">
+      <span class="red" onclick="this.closest('.window').remove()"></span>
+      <span class="yellow"></span><span class="green"></span>
+    </div>${title}
+  </div>
+  <div class="content">${html}</div>`;
+  document.body.appendChild(w);drag(w);
+}
+
+/* DRAG */
+function drag(w){
+  const b=w.querySelector(".titlebar");
+  let x=0,y=0,dx,dy;
+  b.onmousedown=e=>{
+    dx=e.clientX;dy=e.clientY;
+    document.onmousemove=ev=>{
+      x+=ev.clientX-dx;y+=ev.clientY-dy;
+      dx=ev.clientX;dy=ev.clientY;
+      w.style.transform=`translate(${x}px,${y}px)`;
+    };
+    document.onmouseup=()=>document.onmousemove=null;
+  };
+}
+
+/* EXPLORER */
+function openExplorer(){
+  let html="";
+  for(let f in fs){
+    html+=`<div class="file">📁 ${f}</div>`;
+  }
+  win("Explorer",html);
+}
+
+/* APPS */
+function openNotes(){
+  win("Notizen",`
+    <textarea style="width:100%;height:100%" 
+    oninput="localStorage.notes=this.value">${localStorage.notes||""}</textarea>
+  `);
+}
+
+function openCalc(){
+  win("Rechner",`
+    <input id="c" style="width:100%" onkeydown="if(event.key==='Enter')r.innerText=eval(this.value)">
+    <div id="r"></div>
+  `);
+}
+
+function openTerminal(){
+  win("Terminal",`
+    <div id="terminal">
+      <div id="termOut">lamacOS Terminal<br>help</div>
+      <input id="termIn" onkeydown="cmd(event)">
+    </div>
+  `);
+}
+
+function cmd(e){
+  if(e.key!=="Enter")return;
+  let o=termOut,i=termIn,c=i.value;i.value="";
+  o.innerHTML+=`<br>&gt; ${c}`;
+  if(c==="ls")o.innerHTML+=`<br>${Object.keys(fs).join(" ")}`;
+  if(c==="clear")o.innerHTML="lamacOS Terminal";
+  if(c==="shutdown")location.reload();
+  o.scrollTop=o.scrollHeight;
+}
+
+/* APP STORE */
+function openStore(){
+  win("App Store",`
+    <b>Verfügbare Apps</b><br><br>
+    🎮 Mini Game <button onclick="install('game')">Installieren</button><br><br>
+    🎵 Music Player <button onclick="install('music')">Installieren</button>
+  `);
+}
+
+function install(app){
+  fs.Apps[app]="installed";
+  saveFS();
+  alert(app+" installiert!");
+}
+</script>
+</body>
+</html>
